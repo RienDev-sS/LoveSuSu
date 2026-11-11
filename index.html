@@ -555,7 +555,7 @@ body { overflow-y: auto; }
  * 訊息以 AES-256-GCM 加密，金鑰由密碼經 PBKDF2-SHA256 衍生。
  * 原始碼裡沒有明文，只有密碼正確才解得出來。
  */
-const PAYLOAD = {"v":1,"iter":250000,"salt":"Sl3ZxkrelMPL5UyOC6dwvw==","iv":"Jr09Dxdd0RgLvHsi","data":"D3+TdEQ/u91Fxx0FjaJF21QchoKwSCHJXCtWcsvpO8QEnxr0dfIgIJvVLaWR81HauJChHE5JJ1tIPWjB5rc7F8uMR2b26UG03v7nRjVWgdlbBLF294IDMiAIS2Ah5pB7G/ld8Nf4CKuIgBnkH7FkN0yhayK8+OYOnS0pENd/kGeGT8Y="};
+const PAYLOAD = {"v":1,"iter":250000,"salt":"fgXHf/21ibna4nC343X2tQ==","iv":"E/zS3oswIP9UaMLg","data":"OlFPAPE5aHi/uYTFXvhYyk6nnghd3T6MhGUe1mKEft4AUlUwiTyD4t8xEz/+kTmLoELRwfWG/BsS9RaMkgTBcMVtb/nYmt326rSUPd8RPNgk9OEl4nI7fse+KNze6FVai0nDtnFhboN0br32bWORjCJx5JrGT1clyr2nleQtntPaHahbw8PObI8="};
 
 const $ = (id) => document.getElementById(id);
 const screen = $("screen");
@@ -801,7 +801,7 @@ terminal.classList.add("visible");
 statusText.textContent = "LoveSuSu 協議：偵測到加密封包...";
 await wait(350);
 
-await typeLine("[BOOT]   LoveSuSu kernel v1.0.6 載入中...", "dim");
+await typeLine("[BOOT]   LoveSuSu kernel v1.0.3 載入中...", "dim");
 await typeLine("[SIGNAL] 偵測到加密封包：0x7375 (\"su\")");
 await typeLine("[CIPHER] AES-256-GCM ／ PBKDF2-SHA256 × " + PAYLOAD.iter.toLocaleString());
 await typeLine("[LOCK]   封包已鎖定，僅限指定接收者開啟。", "dim");
@@ -873,7 +873,7 @@ void terminal.offsetWidth;
 terminal.classList.add("shake");
 counter.textContent = "0x7375 / DENIED";
 if (failCount === 3) {
-await typeLine("[HINT]   12 位數字：我們認識的那天 + 妳的生日 + 我的生日 (MMDD)", "hint");
+await typeLine("[HINT]   12 位數字：我們初次認識的那天 + 妳的生日 + 我的生日 (MMDD)", "hint");
 }
 addLine("");
 busy = false;
