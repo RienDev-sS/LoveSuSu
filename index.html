@@ -519,7 +519,7 @@ body { overflow-y: auto; }
 
 <body>
 <main class="screen" id="screen">
-<div class="bgv" id="bgv" aria-hidden="true"><div class="bgv-frame"><div id="ytPlayer"></div></div></div>
+<div class="bgv" id="bgv" aria-hidden="true"><div class="bgv-frame"></div></div>
 <p id="status" class="status">LoveSuSu 協議尚未開啟...</p>
 <div id="counter" class="counter">0x7375 / LOCKED</div>
 
@@ -624,79 +624,56 @@ const success = () => { tone(520, 0.12, 0, "sine", 0.04); tone(690, 0.14, 0.09, 
 const chime = () => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.5, i * 0.13, "sine", 0.03)); };
 
 
-/* ───────── 背景 MV（チョーキューメイ 官方 YouTube）─────────
- * 每次進網站都從 0 秒開始。瀏覽器只允許「靜音」自動播放，
- * 所以先靜音播放畫面；第一次點畫面或按鍵時，跳回開頭並打開聲音。
+/* ───────── 背景 MV（Bilibili 嵌入播放器）─────────
+ * 瀏覽器規定要「點一下」才能有聲音，所以在按下「點擊連線」的那一刻才載入播放器，
+ * 每次都從 0 秒開始。右下角 ♪：關掉＝移除播放器；再打開＝從頭重新播放。
  */
-const YT_ID = "dJhp6awU5Z8";
+const BILI_SRC = "https://player.bilibili.com/player.html?bvid=BV16z4y1q7mc&p=1&page=1&t=0&autoplay=1&danmaku=0&high_quality=1&isOutside=true";
+const SONG_SECONDS = 236;
 const bgv = $("bgv");
+const bgvFrame = bgv.querySelector(".bgv-frame");
 const bgm = $("bgm");
 const bgmChip = $("bgmChip");
 const bgmTitle = $("bgmTitle");
-let yt = null;
-let ytReady = false;
 let soundOn = false;
-let wantSound = false;
+let loopTimer = null;
 
 function setChip() {
 bgm.classList.toggle("on", soundOn);
 bgmTitle.textContent = soundOn ? "貴方の恋人になりたい" : "貴方の恋人になりたい ・ 點一下開聲音";
 }
 
-function turnSoundOn(restart) {
-wantSound = true;
-if (!ytReady) return;
-if (restart) yt.seekTo(0, true);
-yt.unMute();
-yt.setVolume(70);
-yt.playVideo();
+function turnSoundOn() {
+turnSoundOff(true);
+const f = document.createElement("iframe");
+f.src = BILI_SRC + "&_=" + Date.now();
+f.allow = "autoplay; fullscreen; encrypted-media; picture-in-picture";
+f.setAttribute("allowfullscreen", "");
+f.setAttribute("scrolling", "no");
+f.setAttribute("frameborder", "0");
+f.title = "背景音樂";
+f.addEventListener("load", () => setTimeout(() => bgv.classList.add("ready"), 1200), { once: true });
+bgvFrame.appendChild(f);
 soundOn = true;
 setChip();
+loopTimer = setTimeout(() => { if (soundOn) turnSoundOn(); }, (SONG_SECONDS + 4) * 1000);
 }
 
-function turnSoundOff() {
-wantSound = false;
-if (ytReady) yt.mute();
+function turnSoundOff(silent) {
+clearTimeout(loopTimer);
+bgvFrame.querySelectorAll("iframe").forEach((x) => x.remove());
+bgv.classList.remove("ready");
 soundOn = false;
-setChip();
+if (!silent) setChip();
 }
-
-window.onYouTubeIframeAPIReady = function () {
-yt = new YT.Player("ytPlayer", {
-videoId: YT_ID,
-playerVars: {
-autoplay: 1, mute: 1, start: 0, controls: 0, disablekb: 1, fs: 0,
-rel: 0, iv_load_policy: 3, playsinline: 1, modestbranding: 1
-},
-events: {
-onReady: (e) => {
-ytReady = true;
-e.target.mute();
-e.target.seekTo(0, true);
-e.target.playVideo();
-if (wantSound) turnSoundOn(true);
-},
-onStateChange: (e) => {
-if (e.data === YT.PlayerState.PLAYING) bgv.classList.add("ready");
-if (e.data === YT.PlayerState.ENDED) { e.target.seekTo(0, true); e.target.playVideo(); }
-}
-}
-});
-};
-
-(() => {
-const tag = document.createElement("script");
-tag.src = "https://www.youtube.com/iframe_api";
-document.head.appendChild(tag);
-})();
 
 let firstSound = true;
 bgmChip.addEventListener("click", (e) => {
 e.stopPropagation();
+firstSound = false;
 if (soundOn) turnSoundOff();
-else { turnSoundOn(firstSound); firstSound = false; }
+else turnSoundOn();
 });
-
 
 /* ───────── helpers ───────── */
 function doFlash(kind = "") {
