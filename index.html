@@ -384,6 +384,69 @@ color: #ffc2de;
 text-shadow: 0 0 6px rgba(255, 150, 205, 0.75);
 }
 
+/* 最後的選擇 */
+.choices {
+display: flex;
+justify-content: center;
+align-items: center;
+flex-wrap: wrap;
+gap: 14px 22px;
+min-height: 84px;
+margin: 14px 0 10px;
+}
+
+.choice {
+padding: 0.32em 0.95em;
+border: 1px solid #17333a;
+border-radius: 4px;
+background: linear-gradient(180deg, #10191c, #050a0c);
+font: inherit;
+font-size: 16px;
+letter-spacing: 0.1em;
+cursor: pointer;
+transition: font-size 0.35s ease, opacity 0.35s ease, padding 0.35s ease;
+animation: askIn 1s ease both;
+}
+
+.choice.yes {
+color: #ffd0e6;
+border-color: rgba(255, 190, 225, 0.5);
+box-shadow: 0 0 10px rgba(255, 160, 210, 0.35), 0 0 26px rgba(255, 140, 200, 0.18);
+text-shadow: 0 0 6px rgba(255, 190, 225, 0.8);
+}
+
+.choice.no {
+color: #8fb3ba;
+box-shadow: 0 0 8px rgba(175, 239, 255, 0.2);
+}
+
+.choice:active { transform: translateY(1px); }
+.choice.gone { opacity: 0; pointer-events: none; }
+.choice:disabled { cursor: default; }
+
+.love.final {
+font-size: clamp(15px, 4.4vw, 32px);
+letter-spacing: 0.04em;
+word-break: break-all;
+overflow-wrap: anywhere;
+}
+
+.smile {
+display: block;
+margin: 18px 0 6px;
+text-align: center;
+font-size: clamp(64px, 18vw, 120px);
+line-height: 1.2;
+filter: drop-shadow(0 0 18px rgba(255, 200, 120, 0.45));
+animation: smileIn 2s ease both;
+}
+
+@keyframes smileIn {
+0% { opacity: 0; transform: scale(0.7); filter: blur(10px); }
+60% { opacity: 1; transform: scale(1.06); filter: blur(0) drop-shadow(0 0 18px rgba(255, 200, 120, 0.45)); }
+100% { opacity: 1; transform: scale(1); filter: drop-shadow(0 0 18px rgba(255, 200, 120, 0.45)); }
+}
+
 @keyframes askIn {
 0% { opacity: 0; filter: blur(6px); transform: translateY(6px); }
 100% { opacity: 1; filter: blur(0); transform: translateY(0); }
@@ -557,7 +620,7 @@ body { overflow-y: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-.terminal.decoding, .love .heart, .logo-glow, .ask { animation: none; }
+.terminal.decoding, .love .heart, .logo-glow, .ask, .choice, .smile { animation: none; }
 }
 </style>
 </head>
@@ -600,7 +663,7 @@ body { overflow-y: auto; }
  * 訊息以 AES-256-GCM 加密，金鑰由密碼經 PBKDF2-SHA256 衍生。
  * 原始碼裡沒有明文，只有密碼正確才解得出來。
  */
-const PAYLOAD = {"v":1,"iter":250000,"salt":"FDkK4MA4THtPuE30P94Urw==","iv":"KNC2zW94CRXtpUpT","data":"+Pt4xaEbTUynYet0ZjjywPTyjExTRHftZRwaciPmPDMqelh0vP3akXPnxbqt9d5kOeQtj/BoyUBQVDbX/plw61KxyzmA5ycP4UiBua5enZJsTieqen4u7q3nrbrfoRVUe8yonT8PF3lCV/4P8IBc6G+jKdGrBzYmO9yFdG2wLhHGWukNnIKrj45Azcj/xe7boquA9grsplJq1QlF0mUOf0H3iuS8r/sPh06NXNFveRJVMP0TsMtlAUT/cbhY0nmwrQ5tgPo="};
+const PAYLOAD = {"v":1,"iter":250000,"salt":"BDNKLnwB0P6nHZJn2r933Q==","iv":"agOB6AxcBAU5GX4/","data":"z3QIA5QzxUfDVkzLssQZHfoEBBpx3YPwnhI728qjO7F+rFjYs5mIjZHoVxqPIcf672hADDBTX/LTJgpsNxRf4n1Xk/ddOwe78UaP/ma4CucnM70cC7QFc0he/txFA9VaRsu5O8V5ETZQjBWGRV58yJiV3KhlDyhOa/SZqnqd3zhTff42Xig/179thVDlQVwSvz6dao2QLs/zQYmimcYHCtAQ490gxRmrxS7qX8QME0+kSbRQ6g6y7XsLB6RpxQ1isTyO2S0pth2BxYVQs0h9/9Gq+CrUmpTayvto1Uc6lVhE/nE20heRywihcUbig51qAUbII4xBuvJjfibpz1Zykb+UvaDkPaTofUN9c10pYFAkSGYzkxcAF2QgJrrJc+FQnAs="};
 
 const $ = (id) => document.getElementById(id);
 const screen = $("screen");
@@ -1042,6 +1105,112 @@ doFlash("pink");
 await wait(900);
 }
 
+// 兩個選項：按 false 一次，false 變小、true 變大，直到 false 消失；按 true 才繼續
+function askChoice() {
+return new Promise((resolve) => {
+const row = document.createElement("div");
+row.className = "choices";
+const yes = document.createElement("button");
+yes.type = "button";
+yes.className = "choice yes";
+yes.textContent = "true";
+const no = document.createElement("button");
+no.type = "button";
+no.className = "choice no";
+no.textContent = "false";
+row.append(yes, no);
+log.appendChild(row);
+scrollDown();
+beep();
+
+const STEPS = 5;
+let presses = 0;
+no.addEventListener("click", () => {
+presses++;
+deny();
+terminal.classList.remove("shake");
+void terminal.offsetWidth;
+terminal.classList.add("shake");
+const k = presses / STEPS;
+no.style.fontSize = Math.max(16 * (1 - k), 0) + "px";
+no.style.padding = (0.32 * (1 - k)) + "em " + (0.95 * (1 - k)) + "em";
+yes.style.fontSize = (16 + 26 * k) + "px";
+if (presses >= STEPS) {
+no.classList.add("gone");
+no.disabled = true;
+setTimeout(() => no.remove(), 400);
+}
+scrollDown();
+});
+yes.addEventListener("click", () => {
+yes.disabled = true;
+no.disabled = true;
+success();
+doFlash("pink");
+resolve();
+}, { once: true });
+});
+}
+
+// 按下 true 之後：狂刷空白把畫面洗掉 → 清空 → 結尾
+async function finale(yes) {
+await wait(500);
+for (let i = 0; i < 90; i++) {
+addLine(" ".repeat(Math.floor(Math.random() * 60)));
+if (i % 2 === 0) tick(i);
+await wait(i < 20 ? 28 : 12);
+}
+log.innerHTML = "";
+terminal.scrollTop = 0;
+await wait(500);
+
+await typeLine(yes[0], "ok");
+success();
+await wait(1200);
+
+const sm = document.createElement("span");
+sm.className = "smile";
+sm.textContent = yes[1];
+log.appendChild(sm);
+scrollDown();
+chime();
+await wait(2000);
+
+const hehe = document.createElement("span");
+hehe.className = "ask";
+log.appendChild(hehe);
+await slowType(hehe, yes[2], 380, 380);
+await wait(1100);
+
+const love = document.createElement("span");
+love.className = "love final";
+log.appendChild(love);
+const chars = Array.from(yes[3]);
+for (let i = 0; i < chars.length; i++) {
+// 驚嘆號後面加零寬空白，手機上才會在驚嘆號中間換行，不會把最後一個字擠到下一行
+love.appendChild(document.createTextNode(chars[i] === "!" ? "!\u200B" : chars[i]));
+tone(560 + Math.min(i, 20) * 38, 0.08, 0, "sine", 0.03);
+scrollDown();
+await wait(chars[i] === "!" ? 45 : 260);
+}
+await wait(400);
+const hearts = document.createElement("span");
+hearts.className = "love";
+for (const c of Array.from(yes[4])) {
+const h = document.createElement("span");
+h.className = "heart";
+h.textContent = c;
+hearts.appendChild(h);
+}
+log.appendChild(hearts);
+scrollDown();
+chime();
+doFlash("pink");
+statusText.textContent = "LoveSuSu：連線成功 ♡";
+counter.textContent = "0x7375 / ACCEPTED ♡";
+await wait(900);
+}
+
 async function reveal(data) {
 await wait(300);
 // 解密進度條
@@ -1104,7 +1273,13 @@ statusText.textContent = "LoveSuSu：訊息已送達 ♡";
 counter.textContent = "0x7375 / DELIVERED";
 
 // 最後的提問（文字在加密內容裡）
-if (Array.isArray(data.ask) && data.ask.length === 3) await askHer(data.ask);
+if (Array.isArray(data.ask) && data.ask.length === 3) {
+await askHer(data.ask);
+if (Array.isArray(data.yes) && data.yes.length === 5) {
+await askChoice();
+await finale(data.yes);
+}
+}
 
 await wait(700);
 const end = addLine("", "dim");
