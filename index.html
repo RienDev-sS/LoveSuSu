@@ -392,7 +392,7 @@ pointer-events: none;
 
 
 
-/* ── 背景 MV（YouTube 官方嵌入，模糊）── */
+/* ── 背景 MV（模糊）── */
 .bgv {
 position: absolute;
 inset: 0;
@@ -415,7 +415,8 @@ transform: translate(-50%, -50%) scale(1.18);
 filter: blur(9px) brightness(0.5) saturate(1.15);
 }
 
-.bgv-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+.bgv-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; opacity: 0; transition: opacity 1.2s ease; }
+.bgv-frame iframe.on { opacity: 1; }
 
 .bgv::after {
 content: "";
@@ -624,12 +625,13 @@ const success = () => { tone(520, 0.12, 0, "sine", 0.04); tone(690, 0.14, 0.09, 
 const chime = () => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.5, i * 0.13, "sine", 0.03)); };
 
 
-/* ───────── 背景 MV（Bilibili 嵌入播放器）─────────
- * 瀏覽器規定要「點一下」才能有聲音，所以在按下「點擊連線」的那一刻才載入播放器，
- * 每次都從 0 秒開始。右下角 ♪：關掉＝移除播放器；再打開＝從頭重新播放。
+/* ───────── 背景 MV（Bilibili 嵌入播放器，循環）─────────
+ * 瀏覽器規定要「點一下」才能有聲音，所以在按下「點擊連線」的那一刻才載入播放器，每次進入都從 0 秒開始。
+ * 循環：快播完時先在底下載入一個新的播放器，新的開始播之後再移除舊的，避免停頓和片尾推薦畫面。
+ * 右下角 ♪：關掉＝移除播放器；再打開＝從頭重新播放。
  */
 const BILI_SRC = "https://player.bilibili.com/player.html?bvid=BV16z4y1q7mc&p=1&page=1&t=0&autoplay=1&danmaku=0&high_quality=1&isOutside=true";
-const SONG_SECONDS = 236;
+const SONG_SECONDS = 235;
 const bgv = $("bgv");
 const bgvFrame = bgv.querySelector(".bgv-frame");
 const bgm = $("bgm");
@@ -643,8 +645,7 @@ bgm.classList.toggle("on", soundOn);
 bgmTitle.textContent = soundOn ? "貴方の恋人になりたい" : "貴方の恋人になりたい ・ 點一下開聲音";
 }
 
-function turnSoundOn() {
-turnSoundOff(true);
+function spawnPlayer() {
 const f = document.createElement("iframe");
 f.src = BILI_SRC + "&_=" + Date.now();
 f.allow = "autoplay; fullscreen; encrypted-media; picture-in-picture";
@@ -652,11 +653,25 @@ f.setAttribute("allowfullscreen", "");
 f.setAttribute("scrolling", "no");
 f.setAttribute("frameborder", "0");
 f.title = "背景音樂";
-f.addEventListener("load", () => setTimeout(() => bgv.classList.add("ready"), 1200), { once: true });
+f.addEventListener("load", () => {
+clearTimeout(loopTimer);
+// 從載入完成開始計時，快播完前 2 秒接上下一輪
+loopTimer = setTimeout(() => { if (soundOn) spawnPlayer(); }, (SONG_SECONDS - 2) * 1000);
+setTimeout(() => {
+if (!f.isConnected) return;
+f.classList.add("on");
+bgv.classList.add("ready");
+bgvFrame.querySelectorAll("iframe").forEach((x) => { if (x !== f) setTimeout(() => x.remove(), 1300); });
+}, 1200);
+}, { once: true });
 bgvFrame.appendChild(f);
+}
+
+function turnSoundOn() {
+turnSoundOff(true);
 soundOn = true;
 setChip();
-loopTimer = setTimeout(() => { if (soundOn) turnSoundOn(); }, (SONG_SECONDS + 4) * 1000);
+spawnPlayer();
 }
 
 function turnSoundOff(silent) {
