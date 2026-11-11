@@ -565,7 +565,7 @@ body { overflow-y: auto; }
 <body>
 <main class="screen" id="screen">
 <div class="bgv" id="bgv" aria-hidden="true"><div class="bgv-frame"></div></div>
-<p id="status" class="status">LoveSuSu 協議尚未開啟...</p>
+<p id="status" class="status">LoveSuSu 尚未開啟...</p>
 <div id="counter" class="counter">0x7375 / LOCKED</div>
 
 <section class="center" id="center">
@@ -691,6 +691,8 @@ bgmTitle.textContent = soundOn ? "貴方の恋人になりたい" : "貴方の�
 
 function spawnPlayer() {
 const f = document.createElement("iframe");
+// credentialless：不帶 B 站登入狀態和記錄，播放器不會「接續上次看到的位置」，每次都從 0 秒開始
+f.setAttribute("credentialless", "");
 f.src = BILI_SRC + "&_=" + Date.now();
 f.allow = "autoplay; fullscreen; encrypted-media; picture-in-picture";
 f.setAttribute("allowfullscreen", "");
@@ -837,7 +839,7 @@ if (skipIntro) skipIntro();
 
 function waitForGate() {
 const gate = $("gate");
-statusText.textContent = "LoveSuSu 協議：等待連線...";
+statusText.textContent = "LoveSuSu：等待連線...";
 return new Promise((resolve) => {
 gate.addEventListener("click", (e) => {
 e.stopPropagation();
@@ -854,10 +856,10 @@ resolve();
 
 async function boot() {
 await waitForGate();
-statusText.textContent = "LoveSuSu 協議：連線中...";
+statusText.textContent = "LoveSuSu：連線中...";
 await playIntro();
 terminal.classList.add("visible");
-statusText.textContent = "LoveSuSu 協議：偵測到加密封包...";
+statusText.textContent = "LoveSuSu：偵測到加密封包...";
 await wait(350);
 
 await typeLine("[BOOT]   LoveSuSu kernel v1.0.3 載入中...", "dim");
@@ -890,7 +892,7 @@ else tick(Math.floor(Math.random() * 7));
 btn.addEventListener("click", () => submit(input, btn, row));
 terminal.addEventListener("click", () => { if (!input.disabled) input.focus(); });
 setTimeout(() => input.focus({ preventScroll: true }), 50);
-statusText.textContent = "LoveSuSu 協議：等待輸入密碼...";
+statusText.textContent = "LoveSuSu：等待輸入密碼...";
 }
 
 async function submit(input, btn, row) {
@@ -945,7 +947,7 @@ verify.className = "line ok";
 success();
 doFlash();
 counter.textContent = "0x7375 / UNLOCKED";
-statusText.textContent = "LoveSuSu 協議：解密中...";
+statusText.textContent = "LoveSuSu：解密中...";
 await reveal(result);
 }
 
@@ -1030,7 +1032,7 @@ const q = document.createElement("span");
 q.className = "ask q";
 log.appendChild(q);
 await slowType(q, ask[2], 300, 450);
-statusText.textContent = "LoveSuSu 協議：等待妳的回覆...";
+statusText.textContent = "LoveSuSu：等待妳的回覆...";
 counter.textContent = "0x7375 / WAITING ♡";
 await wait(1000);
 await heartFlood(5, 0.72, 4000);
@@ -1098,7 +1100,7 @@ await wait(i < 3 ? 380 : 230);
 }
 chime();
 doFlash("pink");
-statusText.textContent = "LoveSuSu 協議：訊息已送達 ♡";
+statusText.textContent = "LoveSuSu：訊息已送達 ♡";
 counter.textContent = "0x7375 / DELIVERED";
 
 // 最後的提問（文字在加密內容裡）
