@@ -524,6 +524,8 @@ filter: blur(9px) brightness(0.5) saturate(1.15);
 
 .bgv-frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; opacity: 0; transition: opacity 1.2s ease; }
 .bgv-frame iframe.on { opacity: 1; }
+.bgv-frame video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; opacity: 0; transition: opacity 1.2s ease; }
+.bgv-frame video.on { opacity: 1; }
 
 .bgv::after {
 content: "";
@@ -732,11 +734,12 @@ const success = () => { tone(520, 0.12, 0, "sine", 0.04); tone(690, 0.14, 0.09, 
 const chime = () => { [784, 988, 1175, 1568].forEach((f, i) => tone(f, 0.5, i * 0.13, "sine", 0.03)); };
 
 
-/* ───────── 背景 MV（Bilibili 嵌入播放器，循環）─────────
- * 瀏覽器規定要「點一下」才能有聲音，所以在按下「點擊連線」的那一刻才載入播放器，每次進入都從 0 秒開始。
- * 循環：快播完時先在底下載入一個新的播放器，新的開始播之後再移除舊的，避免停頓和片尾推薦畫面。
- * 右下角 ♪：關掉＝移除播放器；再打開＝從頭重新播放。
+/* ───────── 背景 MV ─────────
+ * 優先播放同一個資料夾裡的 bg.mp4（手機、電腦都能在按下「點擊連線」時直接有聲播放）。
+ * 找不到 bg.mp4 時，自動改用 Bilibili 嵌入播放器（電腦正常；iPhone 會擋）。
+ * 每次進入都從 0 秒開始、播完自動循環。右下角 ♪：關掉＝停止；再打開＝從頭重新播放。
  */
+const VIDEO_SRC = "bg.mp4";
 const BILI_SRC = "https://player.bilibili.com/player.html?bvid=BV16z4y1q7mc&p=1&page=1&t=0&autoplay=1&danmaku=0&high_quality=1&isOutside=true";
 const SONG_SECONDS = 235;
 const bgv = $("bgv");
@@ -745,13 +748,22 @@ const bgm = $("bgm");
 const bgmChip = $("bgmChip");
 const bgmTitle = $("bgmTitle");
 let soundOn = false;
+let muted = false;
 let loopTimer = null;
 
 function setChip() {
-bgm.classList.toggle("on", soundOn);
-bgmTitle.textContent = soundOn ? "貴方の恋人になりたい" : "貴方の恋人になりたい ・ 點一下開聲音";
+bgm.classList.toggle("on", soundOn && !muted);
+bgmTitle.textContent = soundOn && !muted ? "貴方の恋人になりたい" : "貴方の恋人になりたい ・ 點一下開聲音";
 }
 
+function clearBg() {
+clearTimeout(loopTimer);
+bgvFrame.querySelectorAll("video").forEach((v) => { v.pause(); v.removeAttribute("src"); v.load(); v.remove(); });
+bgvFrame.querySelectorAll("iframe").forEach((x) => x.remove());
+bgv.classList.remove("ready");
+}
+
+/* ── 備援：Bilibili 播放器（快播完時先載入下一輪再移除舊的，達成循環）── */
 function spawnPlayer() {
 const f = document.createElement("iframe");
 // credentialless：不帶 B 站登入狀態和記錄，播放器不會「接續上次看到的位置」，每次都從 0 秒開始
@@ -764,7 +776,6 @@ f.setAttribute("frameborder", "0");
 f.title = "背景音樂";
 f.addEventListener("load", () => {
 clearTimeout(loopTimer);
-// 從載入完成開始計時，快播完前 2 秒接上下一輪
 loopTimer = setTimeout(() => { if (soundOn) spawnPlayer(); }, (SONG_SECONDS - 2) * 1000);
 setTimeout(() => {
 if (!f.isConnected) return;
@@ -776,18 +787,47 @@ bgvFrame.querySelectorAll("iframe").forEach((x) => { if (x !== f) setTimeout(() 
 bgvFrame.appendChild(f);
 }
 
-function turnSoundOn() {
-turnSoundOff(true);
-soundOn = true;
+function useBilibili() {
+clearBg();
+muted = false;
 setChip();
 spawnPlayer();
 }
 
+/* ── 主要：bg.mp4 ── */
+function turnSoundOn() {
+clearBg();
+soundOn = true;
+muted = false;
+const v = document.createElement("video");
+v.loop = true;
+v.playsInline = true;
+v.setAttribute("playsinline", "");
+v.setAttribute("webkit-playsinline", "");
+v.preload = "auto";
+v.addEventListener("error", () => { if (soundOn && v.isConnected) useBilibili(); }, { once: true });
+v.addEventListener("playing", () => { v.classList.add("on"); bgv.classList.add("ready"); }, { once: true });
+v.src = VIDEO_SRC;
+bgvFrame.appendChild(v);
+// 一定要在點擊的當下呼叫 play()，手機才允許有聲音
+const p = v.play();
+if (p && p.catch) {
+p.catch((err) => {
+if (!soundOn || !v.isConnected || !(err && err.name === "NotAllowedError")) return;
+// 瀏覽器仍擋聲音 → 先靜音播畫面，點右下角 ♪ 開聲音
+v.muted = true;
+muted = true;
+v.play().catch(() => {});
+setChip();
+});
+}
+setChip();
+}
+
 function turnSoundOff(silent) {
-clearTimeout(loopTimer);
-bgvFrame.querySelectorAll("iframe").forEach((x) => x.remove());
-bgv.classList.remove("ready");
+clearBg();
 soundOn = false;
+muted = false;
 if (!silent) setChip();
 }
 
@@ -795,6 +835,14 @@ let firstSound = true;
 bgmChip.addEventListener("click", (e) => {
 e.stopPropagation();
 firstSound = false;
+const v = bgvFrame.querySelector("video");
+if (soundOn && muted && v) {
+v.muted = false;
+muted = false;
+v.play().catch(() => {});
+setChip();
+return;
+}
 if (soundOn) turnSoundOff();
 else turnSoundOn();
 });
